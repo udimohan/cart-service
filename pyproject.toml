@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cartservice"
+version = "0.1.0"
+description = "Cart/discount/inventory service with intentional bugs for release-analysis testing"
+requires-python = ">=3.9"
+dependencies = ["flask>=3.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
