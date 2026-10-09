@@ -31,4 +31,12 @@ public class CartService {
             st.executeUpdate(sql);
         }
     }
+
+    /** Remove a single item from a cart. */
+    public void removeItem(String cartId, String sku) throws Exception {
+        String sql = "DELETE FROM cart_items WHERE sku = '" + sku + "'";
+        try (Statement st = db.createStatement()) {
+            st.executeUpdate(sql);
+        }
+    }
 }
