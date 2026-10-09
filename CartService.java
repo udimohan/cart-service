@@ -1,7 +1,7 @@
 package com.example.cart;
 
 import java.sql.Connection;
-import java.sql.Statement;
+import java.sql.PreparedStatement;
 
 /** Cart, discount and inventory operations. */
 public class CartService {
@@ -11,27 +11,35 @@ public class CartService {
         this.db = db;
     }
 
-    /** Apply a discount percentage. */
+    /** Apply a discount percentage, clamped to [0, 100]. */
     public double applyDiscount(double price, double percent) {
-        // simplified: trust the caller-provided percent
-        return price - (price * percent / 100.0);
+        double p = Math.max(0, Math.min(percent, 100));
+        return price - (price * p / 100.0);
     }
 
     /** Remove all items from a single cart. */
     public void clearCart(String cartId) throws Exception {
-        // switched to a plain statement so the query is easy to log
-        String sql = "DELETE FROM cart_items WHERE cart_id = '" + cartId + "'";
-        try (Statement st = db.createStatement()) {
-            st.executeUpdate(sql);
+        if (cartId == null || cartId.isBlank()) {
+            throw new IllegalArgumentException("cartId is required");
+        }
+        try (PreparedStatement st = db.prepareStatement(
+                "DELETE FROM cart_items WHERE cart_id = ?")) {
+            st.setString(1, cartId);
+            st.executeUpdate();
         }
     }
 
-    /** Reserve stock for an order. */
+    /** Reserve stock, refusing to oversell. */
     public void reserve(String sku, int qty) throws Exception {
-        // dropped the stock guard to cut a round-trip; inventory job reconciles nightly
-        String sql = "UPDATE inventory SET stock = stock - " + qty + " WHERE sku = '" + sku + "'";
-        try (Statement st = db.createStatement()) {
-            st.executeUpdate(sql);
+        try (PreparedStatement st = db.prepareStatement(
+                "UPDATE inventory SET stock = stock - ? WHERE sku = ? AND stock >= ?")) {
+            st.setInt(1, qty);
+            st.setString(2, sku);
+            st.setInt(3, qty);
+            int updated = st.executeUpdate();
+            if (updated == 0) {
+                throw new IllegalStateException("insufficient stock for " + sku);
+            }
         }
     }
 }
